@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\UserAnswer;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -49,14 +50,12 @@ class AuthController extends Controller
             'phone' => 'required|string|max:255',
             'country' => 'required|string|max:255',
             'password' => 'required|string|min:6',
-            'role'=>'required|string|min:1'
+            'role' => 'required|string|min:1'
         ]);
 
         if ($validator->fails()) {
             return response()->json(['error' => $validator->errors()], 422);
         }
-
-        $answer0 = $request->input('answer0');
 
         $user = User::create([
             'firstname' => $request->input('firstname'),
@@ -68,18 +67,15 @@ class AuthController extends Controller
             'password' => bcrypt($request->input('password')),
         ]);
 
+        $questions = $request->input('questions');
 
-
-        $user = UserAnswer::create([
-            'id_user' => $user->id,
-            'id_question' => 1,
-            'answer' => $request->input('answer0'),
-            'phone' => $request->input('phone'),
-            'country' => $request->input('country'),
-            'role' => $request->input('role'),
-            'password' => bcrypt($request->input('password')),
-        ]);
-
+        foreach ($questions as $question) {
+            UserAnswer::create([
+                'id_user' => $user->id,
+                'id_question' => $question['id'],
+                'answer' => $question['answer'],
+            ]);
+        }
 
         $token = Auth::login($user);
         return response()->json(['token' => $token, 'user' => $user]);
