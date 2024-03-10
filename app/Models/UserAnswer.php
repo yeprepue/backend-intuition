@@ -15,4 +15,14 @@ class UserAnswer extends Model
         'id_question',
         'answer',
     ];
+
+    public function users()
+    {
+        return $this->belongsToMany(User::class, 'user_answers', 'id', 'id');
+    }
+
+    public function questions()
+    {
+        return $this->belongsToMany(Question::class, 'user_answers', 'id', 'id');
+    }
 }

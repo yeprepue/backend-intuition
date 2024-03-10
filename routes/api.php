@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AnswerController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\QuestionController;
 use Illuminate\Http\Request;
@@ -28,9 +29,19 @@ Route::put('/questions/{id}', [QuestionController::class, 'update']);
 Route::post('/register',[AuthController::class,'register']);
 Route::post('/login', [AuthController::class,'login']);
 
+
+Route::get('/user', [AuthController::class,'index']);
+Route::get('/user/{id}', [AuthController::class,'show']);
+Route::post('/user', [AuthController::class, 'store']);
+Route::put('/user/{id}', [AuthController::class, 'update']);
+
+
+Route::get('/usersanswers', [AnswerController::class,'index']);
+Route::get('/usersanswers/{id}', [AnswerController::class,'show']);
+
 Route::middleware(['auth:api'])->group(function () {
     Route::post('/logout', [AuthController::class,'logout']);
     Route::post('/refresh', [AuthController::class,'refresh']);
-    Route::get('/user', [AuthController::class,'user']);
+
 });
 
