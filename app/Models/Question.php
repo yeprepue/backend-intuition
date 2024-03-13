@@ -14,10 +14,8 @@ class Question extends Model
         'question_name',
     ];
 
-
-
-    public function users()
+    public function userAnswers()
     {
-        return $this->belongsToMany(User::class, 'user_answers', 'id', 'id');
+        return $this->hasMany(UserAnswer::class, 'id_question');
     }
 }

@@ -20,7 +20,8 @@ class User extends Authenticatable implements JWTSubject
         'phone',
         'password',
         'country',
-        'role'
+        'role',
+        'image'
     ];
 
 
@@ -45,8 +46,8 @@ class User extends Authenticatable implements JWTSubject
         return [];
     }
 
-    public function questions()
+    public function userAnswers()
     {
-        return $this->belongsToMany(Question::class, 'user_answers', 'id', 'id');
+        return $this->hasMany(UserAnswer::class, 'id_user');
     }
 }

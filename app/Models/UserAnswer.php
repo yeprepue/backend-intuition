@@ -16,13 +16,13 @@ class UserAnswer extends Model
         'answer',
     ];
 
-    public function users()
+    public function user()
     {
-        return $this->belongsToMany(User::class, 'user_answers', 'id', 'id');
+        return $this->belongsTo(User::class, 'id_user');
     }
 
-    public function questions()
+    public function question()
     {
-        return $this->belongsToMany(Question::class, 'user_answers', 'id', 'id');
+        return $this->belongsTo(Question::class, 'id_question');
     }
 }

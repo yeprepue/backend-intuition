@@ -10,30 +10,50 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
 {
-
-
     public function index()
     {
         $users = User::all();
+
+
         return new JsonResponse($users);
     }
+
     public function show(Request $request, $id)
     {
-        $user = User::find($id);
+        $user = User::with('userAnswers.question')->find($id);
+        $userOnly = User::find($id);
+
+        $userData = [
+            'user' => $user->toArray(),
+            'user_answers' => $user->userAnswers->map(function ($userAnswer) {
+                return [
+                    'question_name' => $userAnswer->question->question_name,
+                    'answer' => $userAnswer->answer
+                ];
+            })->toArray()
+        ];
+
+        $userObject = [
+            'user' => $userOnly,
+            'user_answers' => $userData['user_answers']
+        ];
+
+
         if (!$user) {
             return new JsonResponse([
                 'error' => 'Usuario no encontrado'
             ], 404);
         }
-        return new JsonResponse($user);
+        return new JsonResponse($userObject);
     }
 
-    public function  store(Request $request)
+    public function store(Request $request)
     {
         $userFirstname = $request->input('firstname');
         $userLastname = $request->input('lastname');
@@ -42,6 +62,7 @@ class AuthController extends Controller
         $userPassword = $request->input('password');
         $userCountry = $request->input('country');
         $userRole = $request->input('role');
+        $userImage = $request->file('image');
 
         $user = User::create([
             'firstname' => $userFirstname,
@@ -50,7 +71,8 @@ class AuthController extends Controller
             'phone' => $userPhone,
             'password' => $userPassword,
             'country' => $userCountry,
-            'role' => $userRole
+            'role' => $userRole,
+            'image' => $userImage
         ]);
         return new JsonResponse($user);
     }
@@ -70,7 +92,8 @@ class AuthController extends Controller
             'phone' => $request->input('phone', $user->phone),
             'password' => $request->input('password', $user->password),
             'country' => $request->input('country', $user->country),
-            'role' => $request->input('role', $user->role)
+            'role' => $request->input('role', $user->role),
+            'image' => $request->file('image') ?? $user->image,
         ]);
 
         return new JsonResponse(['message' => 'Usuario actualizado correctamente']);
@@ -95,7 +118,9 @@ class AuthController extends Controller
             'firstname' => $user->firstname,
             'lastname' => $user->lastname,
             'email' => $user->email,
+            'country' => $user->country,
             'role' => $user->role,
+            'image' => $user->image,
             'token' => $token
         ];
 
@@ -124,6 +149,7 @@ class AuthController extends Controller
     {
         try {
             DB::beginTransaction();
+
             $validator = Validator::make($request->all(), [
                 'firstname' => 'required|string|max:255',
                 'lastname' => 'required|string|max:255',
@@ -131,7 +157,9 @@ class AuthController extends Controller
                 'phone' => 'required|string|max:255',
                 'country' => 'required|string|max:255',
                 'password' => 'required|string|min:6',
-                'role' => 'required|string|min:1'
+                'role' => 'required|string|min:1',
+                'image' => 'nullable|file|mimes:jpeg,png,jpg,gif|max:2048',
+                'questions' => 'required|array',
             ]);
 
             if ($validator->fails()) {
@@ -146,26 +174,43 @@ class AuthController extends Controller
                 'country' => $request->input('country'),
                 'role' => $request->input('role'),
                 'password' => bcrypt($request->input('password')),
+                'image' => $request->file('image') ?? null,
             ]);
 
             $questions = $request->input('questions');
 
-            foreach ($questions as $question) {
-                UserAnswer::create([
-                    'id_user' => $user->id,
-                    'id_question' => $question['id'],
-                    'answer' => $question['answer'],
-                ]);
+            if (!empty($questions)) {
+                foreach ($questions as $question) {
+                    UserAnswer::create([
+                        'id_user' => $user->id,
+                        'id_question' => $question['id'],
+                        'answer' => $question['answer'],
+                    ]);
+                }
             }
+
+            $contenidoCorreo = "
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Registro Exitoso</title>
+        </head>
+        <body>
+            <h1>¡Hola, $user->firstname!</h1>
+            <p>Tu registro en nuestro sitio ha sido exitoso. ¡Bienvenido!</p>
+        </body>
+        </html>
+    ";
+
+            Mail::raw($contenidoCorreo, function ($message) use ($user) {
+                $message->to($user->email)->subject('Registro Exitoso');
+            });
+
             DB::commit();
-            $activationLink = url('/activate/' . $user->activation_token);
-            Mail::to($user->email)->send(new RegistrationEmail($user, $activationLink));
-
-
             return new JsonResponse(["message" => "Usuario creado correctamente"]);
         } catch (\Throwable $th) {
             DB::rollBack();
-            return new JsonResponse(["error" => $th]);
+            return new JsonResponse(["error" => $th->getMessage()], 500);
         }
     }
 }

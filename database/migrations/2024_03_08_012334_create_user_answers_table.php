@@ -23,7 +23,7 @@ return new class extends Migration
             // Define foreign key constraints
             $table->foreign('id_user')->references('id')->on('users');
             $table->foreign('id_question')->references('id')->on('questions');
-
+            $table->text('question_name');
             $table->text('answer');
             $table->timestamps();
         });
